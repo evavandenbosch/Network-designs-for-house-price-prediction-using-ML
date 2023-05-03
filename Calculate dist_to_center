@@ -1,0 +1,11 @@
+import pandas as pd
+from geopy.distance import great_circle
+
+# read the CSV input file
+df = pd.read_csv('Kansas_housing.csv')
+
+# calculate the distance for each row in the dataset
+df['dist_to_center'] = df.apply(lambda row: great_circle((row['lat'], row['long']), (47.617004, -122.343506)).km, axis=1)
+
+# save the updated dataset to a new CSV file
+df.to_csv('KC_incl_dist_to_center.csv', index=False)

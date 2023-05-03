@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the training data
+train_data = pd.read_csv('trdata_netw3_085_featuresNEW.csv')
+
+# Load the test data
+test_data = pd.read_csv('tedata_netw3_085_featuresNEW.csv')
+
+# Merge the training and test data
+data = pd.concat([train_data, test_data], axis=0)
+
+# Calculate summary statistics for each network feature
+print('Summary Statistics for Average Price of All Neighbors:')
+print(data['avg_price_neighbors'].describe())
+print('Summary Statistics for Node Degree:')
+print(data['node_degree'].describe())
+
+# Create box plots
+plt.boxplot(data['avg_price_neighbors'])
+plt.title('Box Plot of Average Price of All Neighbors')
+plt.show()
+plt.boxplot(data['node_degree'])
+plt.title('Box Plot of Node Degree')
+plt.show()
+
+# Create scatter plots
+plt.scatter(data['avg_price_neighbors'], data['Price'])
+plt.title('Scatter Plot of Average Price of All Neighbors vs House Price')
+plt.xlabel('Average Price of All Neighbors')
+plt.ylabel('House Price')
+plt.show()
+plt.scatter(data['node_degree'], data['Price'])
+plt.title('Scatter Plot of Node Degree vs House Price')
+plt.xlabel('Node Degree')
+plt.ylabel('House Price')
+plt.show()
+
+# Create histograms
+plt.hist(data['avg_price_neighbors'], bins=20)
+plt.title('Distribution of Average Price of All Neighbors')
+plt.show()
+plt.hist(data['node_degree'], bins=20)
+plt.title('Distribution of Node Degree')
+plt.show()

@@ -1,0 +1,253 @@
+##### Adding network features for Road-cutoff network #####
+import pandas as pd
+import networkx as nx
+import numpy as np
+import warnings
+import matplotlib
+from sklearn.model_selection import train_test_split
+
+matplotlib.use('TkAgg')
+
+warnings.filterwarnings('ignore')
+
+threshold = 1800
+
+###### Training data ######
+# read the csv file into a pandas dataframe
+df = pd.read_csv('my_filtered_dataset.csv')
+del df['ID']  # ID is not an explanatory variable, so we drop that.
+del df['date']
+del df['index']
+# most_pred_features = ['Price','grade','sqft_living','bathrooms','sqft_living15', 'sqft_above', 'dist_to_center']
+# df = df[most_pred_features]
+print('Missing values? ', df.isnull().values.any())
+# There are no missing values
+
+# Split into training and test set
+# training data = df, because we only want to use training data to build features!
+df, tedata = train_test_split(df, test_size=0.2, random_state=42)
+print("Length of training dataset: ", len(df))
+# Definieer de kolommen die we als features beschouwen en de target
+# De target staat vanvoor, alle andere kolommen gebruiken we als features
+feature_cols = list(df.columns[1:])
+print('Dit zijn onze features: ' + str(feature_cols))
+target = ['Price']
+print('Target: ' + str(target))
+
+# Load the distance matrix that we stored
+dist_matrix = pd.read_csv('my_filtered_road_distances.csv', index_col=0)
+# Renumber so that indices are the same as our other matrices
+dist_matrix = dist_matrix.reset_index(drop=True).T.reset_index(drop=True).T
+
+def build_graph_distance(features, dist_threshold):
+    # create an empty graph using networkx
+    G = nx.Graph()
+    # add nodes to the graph
+    for i in features.iterrows():
+        node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
+        # id: we nemen gewoon de index in de dataframe
+        id_node = i[0]
+        # print("id_node: ", id_node)
+        # features: we selecteren uit de rij in de dataframe enkel de kolommen die we als features beschouwen
+        x_node = i[1][feature_cols].values
+        # target: we selecteren opnieuw uit de huidige rij enkel de target, nl de prijs
+        y_node = i[1][target].values
+        # print(y_node)
+        G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features
+
+    # print the number of nodes and their features
+    # print("Number of nodes:", G.number_of_nodes())
+    # for node in G.nodes():
+    # print(f"Node {node} features:", G.nodes[node])
+
+    # calculate the distance between each pair of houses and add edges to the graph with the distance as the edge weight
+    for i, node1 in G.nodes(data=True):
+        print('i: ', i)
+        for j, node2 in G.nodes(data=True):
+            if i < j:
+                dist = dist_matrix.loc[i, j]
+                if dist <= dist_threshold:  # Enkel edge indien de huizen op minder dan ...km van elkaar liggen
+                    G.add_edge(i, j, weight=1 / dist)
+    return G
+
+G = build_graph_distance(df, threshold)
+
+# print("(node,degree):", G.degree)
+# Add column to dataset
+degree_dict = {node: degree for node, degree in G.degree}
+df['node_degree'] = None
+for i in df.iterrows():
+    id_node = i[0]
+    print('id node: ', id_node)
+    degree = degree_dict[id_node]
+    print('degree: ', degree)
+    df.at[id_node, 'node_degree'] = degree
+
+# calculate average price of all neighbors
+avg_prices_dict = {}
+a = 0
+for i in df.iterrows():
+    print(a)
+    a = a + 1
+    id_node = i[0]
+    # print('id: ', id_node)
+    neighbors = list(G.neighbors(id_node))
+    if len(neighbors) > 0:
+        total_price = 0
+        for neighbor in neighbors:
+            total_price += G.nodes[neighbor]['y']
+        avg_price = total_price / len(neighbors)
+        avg_price = avg_price[0]
+        # Store the average house price in the dictionary
+        avg_prices_dict[id_node] = avg_price
+        print('avg_price: ', avg_price)
+    else:
+        avg_prices_dict[id_node] = 0
+
+# Assume avg_prices_dict is a dictionary containing key-value pairs of prices
+has_missing_values = False
+
+for price in avg_prices_dict.values():
+    if price is None or pd.isna(price):
+        has_missing_values = True
+        break
+
+if has_missing_values:
+    print("The training set contains missing values.")
+else:
+    print("The training set does not contain any missing values.")
+
+# print('Average price: ', avg_prices_dict)
+# Add column to dataset
+df['avg_price_neighbors'] = None
+a = 0
+for i in df.iterrows():
+    print(a)
+    a = a + 1
+    id_node = i[0]
+    # print('id node: ', id_node)
+    avgprice = avg_prices_dict[id_node]
+    print('Average price: ', avgprice)
+    df.at[id_node, 'avg_price_neighbors'] = avgprice
+
+# save the updated dataset to new csv file
+df.to_csv('trdata_netw2_1800_featuresNEW.csv')
+
+####### Test data #######
+# read the csv file into a pandas dataframe
+df = pd.read_csv('my_filtered_dataset.csv')
+del df['ID']  # ID is not an explanatory variable, so we drop that.
+del df['date']
+del df['index']
+# most_pred_features = ['Price','grade','sqft_living','bathrooms','sqft_living15', 'sqft_above', 'dist_to_center']
+# df = df[most_pred_features]
+print('Missing values? ', df.isnull().values.any())
+# There are no missing values
+
+# Split into training and test set
+# training data = df, because we only want to use training data to build features!
+trdata, df = train_test_split(df, test_size=0.2, random_state=42)
+print("Length of training dataset: ", len(df))
+
+# Definieer de kolommen die we als features beschouwen en de target
+# De target staat vanvoor, alle andere kolommen gebruiken we als features
+feature_cols = list(df.columns[1:])
+print('Dit zijn onze features: ' + str(feature_cols))
+target = ['Price']
+print('Target: ' + str(target))
+
+
+def build_graph_distance(features, dist_threshold):
+    # create an empty graph using networkx
+    G = nx.Graph()
+    # add nodes to the graph
+    for i in features.iterrows():
+        node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
+        # id: we nemen gewoon de index in de dataframe
+        id_node = i[0]
+        # print("id_node: ", id_node)
+        # features: we selecteren uit de rij in de dataframe enkel de kolommen die we als features beschouwen
+        x_node = i[1][feature_cols].values
+        # target: we selecteren opnieuw uit de huidige rij enkel de target, nl de prijs
+        y_node = i[1][target].values
+        # print(y_node)
+        G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features
+
+    # print the number of nodes and their features
+    # print("Number of nodes:", G.number_of_nodes())
+    # for node in G.nodes():
+    # print(f"Node {node} features:", G.nodes[node])
+
+    # calculate the distance between each pair of houses and add edges to the graph with the distance as the edge weight
+    for i, node1 in G.nodes(data=True):
+        print('i: ', i)
+        for j, node2 in G.nodes(data=True):
+            if i < j:
+                dist = dist_matrix.loc[i, j]
+                if dist <= dist_threshold:  # Enkel edge indien de huizen op minder dan ...km van elkaar liggen
+                    G.add_edge(i, j, weight=1 / dist)
+    return G
+
+
+G = build_graph_distance(df, threshold)
+
+# print("(node,degree):", G.degree)
+# Add column to dataset
+degree_dict = {node: degree for node, degree in G.degree}
+df['node_degree'] = None
+for i in df.iterrows():
+    id_node = i[0]
+    print('id node: ', id_node)
+    degree = degree_dict[id_node]
+    print('degree: ', degree)
+    df.at[id_node, 'node_degree'] = degree
+
+# calculate average price of all neighbors
+avg_prices_dict = {}
+a = 0
+for i in df.iterrows():
+    print(a)
+    a = a + 1
+    id_node = i[0]
+    # print('id: ', id_node)
+    neighbors = list(G.neighbors(id_node))
+    if len(neighbors) > 0:
+        total_price = 0
+        for neighbor in neighbors:
+            total_price += G.nodes[neighbor]['y']
+        avg_price = total_price / len(neighbors)
+        avg_price = avg_price[0]
+        # Store the average house price in the dictionary
+        avg_prices_dict[id_node] = avg_price
+        print('avg_price: ', avg_price)
+    else:
+        avg_prices_dict[id_node] = 0
+
+# Assume avg_prices_dict is a dictionary containing key-value pairs of prices
+has_missing_values = False
+
+for price in avg_prices_dict.values():
+    if price is None or pd.isna(price):
+        has_missing_values = True
+        break
+
+if has_missing_values:
+    print("The test set contains missing values.")
+else:
+    print("The test set does not contain any missing values.")
+
+# print('Average price: ', avg_prices_dict)
+# Add column to dataset
+df['avg_price_neighbors'] = None
+a = 0
+for i in df.iterrows():
+    print(a)
+    a = a + 1
+    id_node = i[0]
+    # print('id node: ', id_node)
+    avgprice = avg_prices_dict[id_node]
+    print('Average price: ', avgprice)
+    df.at[id_node, 'avg_price_neighbors'] = avgprice
+
+# save the updated dataset to new csv file
+df.to_csv('tedata_netw2_1800_featuresNEW.csv')

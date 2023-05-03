@@ -1,0 +1,9 @@
+import pandas as pd
+
+trdata = pd.read_csv('trdata_netw6_k70_featuresNEW.csv')
+tedata = pd.read_csv('tedata_netw6_k70_featuresNEW.csv')
+trnode = trdata['node_degree']
+tenode = tedata['node_degree']
+print(trnode)
+print('Mean training node degree: ', trnode.mean())
+print('Mean test node degree: ', tenode.mean())

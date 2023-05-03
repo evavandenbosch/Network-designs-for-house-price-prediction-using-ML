@@ -1,0 +1,87 @@
+import pickle
+import pandas as pd
+import networkx as nx
+import warnings
+import matplotlib
+
+matplotlib.use('TkAgg')
+
+warnings.filterwarnings('ignore')
+
+# read the csv file into a pandas dataframe
+df = pd.read_csv('my_filtered_dataset.csv')
+most_pred_features = ['index','Price','grade','sqft_living','bathrooms','sqft_living15', 'sqft_above', 'dist_to_center']
+df = df[most_pred_features]
+
+# Definieer de kolommen die we als features beschouwen en de target
+# De target staat vanvoor, alle andere kolommen gebruiken we als features
+feature_cols = list(df.columns[2:])
+print('Dit zijn onze features: ' + str(feature_cols))
+target = ['Price']
+print('Target: '+str(target))
+
+def build_graph_distance(features, dist_threshold):
+    # create an empty graph using networkx
+    G = nx.Graph()
+    # add nodes to the graph
+    for i in features.iterrows():
+        # Wat is i?
+        # print(i)
+        # i is een tuple van de vorm (id, rij_in_dataframe)
+        # print(type(i[1]))
+        # i[1] is dus de rij_in_dataframe, maar is dit een pandas DataFrame?
+        # nee, dit is een pandas Series
+        node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
+        # we moeten dus de pandas Series to_dict functie gebruiken om dit om te zetten naar een dictionary
+        # print(node_features)
+        # eens kijken wat dit geeft
+
+        # We gaan nu de nodes toevoegen, maar wat hebben we nodig?
+        # We willen uiteindelijk een Data object Data(x=x, y=y, edge_index=edge_index)
+        # x zijn onze features, y zijn onze prijzen, edge indices is voor de volgende stap
+        # We voegen dus een node toe met de volgende info: id, features, target
+        # id: we nemen gewoon de index in de dataframe
+        id_node = i[0]
+        # features: we selecteren uit de rij in de dataframe enkel de kolommen die we als features beschouwen
+        x_node = i[1][feature_cols].values
+        # print(x_node)
+        # target: we selecteren opnieuw uit de huidige rij enkel de target, nl de prijs
+        y_node = i[1][target].values
+        # print(y_node)
+        G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features
+
+    # print the number of nodes and their features
+    # print("Number of nodes:", G.number_of_nodes())
+    # for node in G.nodes():
+    # print(f"Node {node} features:", G.nodes[node])
+
+    # Load the distance matrix that we stored
+    dist_matrix = pd.read_csv('my_filtered_road_distances.csv', index_col=0)
+
+    # calculate the distance between each pair of houses and add edges to the graph with the distance as the edge weight
+    k = 0
+    for i in df.iloc[:, 0]:
+        print('i', i)
+        # print("node1", node1)
+        l = 0
+        for j in df.iloc[:, 0]:
+            # print("j", j)
+            # print("node2", node2)
+            if i < j:
+                dist = dist_matrix.loc[i, str(j)]
+                if dist <= dist_threshold:  # Enkel edge indien de huizen op minder dan ...km van elkaar liggen
+                    # k = plaats in de lijst (0,1,2,3,...) van de node met index i
+                    # l = plaats in de lijst (0,1,2,3,...) van de node met index j
+                    # print("k", k)
+                    # print("l", l)
+                    # print("distance between k and l: ", dist)
+                    G.add_edge(k, l, weight=1 / dist)
+            l = l + 1
+        k = k + 1
+    return G
+
+G = build_graph_distance(df, dist_threshold=120)
+
+# pickle the graph
+with open('netw2_120.pickle', 'wb') as f:
+    pickle.dump(G, f)

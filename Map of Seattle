@@ -1,0 +1,11 @@
+import pandas as pd
+import folium
+
+# read the csv file into a pandas dataframe
+df = pd.read_csv('Kansas_housing.csv')
+
+king_county_center = [df['lat'].mean(), df['long'].mean()]
+map = folium.Map(location=king_county_center, zoom_start=12)
+for index, row in df.iterrows():
+    folium.Marker(location=[row['lat'], row['long']]).add_to(map)
+map.save('houses_map.html')

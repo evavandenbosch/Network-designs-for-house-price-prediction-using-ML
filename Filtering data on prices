@@ -1,0 +1,17 @@
+import pandas as pd
+
+# define the allowed zip code ranges as sets
+allowed_ranges = {98101,98102, 98103, 98104, 98105, 98106, 98107, 98108, 98109, 98112, 98115, 98116, 98117, 98118, 98119, 98120, 98121, 98122, 98125,
+                  98126, 98133, 98134, 98136, 98144, 98146, 98155, 98177,
+                  98178, 98195, 98199, 98034}
+# read in the dataset
+df = pd.read_csv('KC_incl_dist_to_center.csv')
+
+# loop through the rows of the dataset and keep only rows with valid zip codes
+filtered_df = df[(df['zipcode'].astype(int).isin(allowed_ranges)) & (df['Price'] <= 1000000)]
+
+# write out the filtered dataset to a new CSV file
+filtered_df.to_csv('my_filtered_dataset.csv', index=False)
+
+print(len(df))
+print(len(filtered_df))

@@ -1,0 +1,92 @@
+# Open Source Routing Machine (OSRM) API documentation: https://github.com/Project-OSRM/osrm-backend/blob/master/docs/http.md
+
+import requests
+import pandas as pd
+
+data = pd.read_csv('kc_final.csv')
+
+def get_distances_from_rows(data, rows):
+    """
+    This function calls the OSRM HTTP Server for a list of locations in the data 
+    and saves the travel time and travel distance by car in a Pandas DataFrame.
+    The Table service is used to get a matrix of distances and durations of the fastest
+    rout between all pairs of the supplied coordinates. The maximum number of locations the
+    Table service can handle is 100. This is why the list of coordinates is split in chunks
+    of 50 locations and the Table service is called for each pair of chunks. Lastly, these
+    distances and durations are combined into one large DataFrame.
+
+    Parameters
+    ----------
+    data : a Pandas DataFrame from which lat,long pairs are extracted.
+    rows : a list of indices for the rows in data for which 
+           travel time and distance are extracted from the OSRM API.
+    
+    Returns
+    -------
+    df : a Pandas DataFame with MultiIndex containing index pairs of rows (from/to)
+            and columns indicating travel distance and duration by car between the two locations.
+
+    """
+
+    if len(rows) >= 100:
+        list_chunked = [rows[i:i + 50] for i in range(0, len(rows), 50)]
+        coords = [';'.join([str(data.loc[row,'long'])+','+str(data.loc[row,'lat']) for row in chunk]) for chunk in list_chunked]
+        
+        print(f"Distances split into {len(coords)} chunks.")
+
+        dfs = []
+        for i, chunk1 in enumerate(coords):
+            for j in range(i+1, len(coords)):
+                print(f"Get distance matrix {i,j}...")
+                chunk2 = coords[j]
+                comb_coords = ';'.join([chunk1,chunk2])
+
+                url = f"http://router.project-osrm.org/table/v1/car/{comb_coords}?annotations=distance,duration"
+                res = requests.get(url)
+                dist = res.json()['distances']
+                dur = res.json()['durations']
+
+                start1 = len(coords[i-1].split(';'))*i if i >=1 else 0
+                end1 = start1 + len(chunk1.split(';'))
+                start2 = len(coords[j-1].split(';'))*j if j >=1 else 0
+                end2 = start2 + len(chunk2.split(';'))
+                print(start1, end1, start2, end2)
+
+                cols = list(range(start1, end1)) + list(range(start2,end2))
+
+                dist_df = pd.DataFrame(dist, columns=cols, index = cols).stack()
+                dist_df.index = dist_df.index.set_names(["from", "to"]) 
+                dur_df = pd.DataFrame(dur, columns=cols, index = cols).stack()
+                dur_df.index = dur_df.index.set_names(["from", "to"])
+                df = pd.concat([dist_df, dur_df], axis=1)
+                df = df.rename(columns={0:'distance',1:'duration'})
+                dfs.append(df)
+        
+        df = pd.concat(dfs)
+        df = df[~df.index.duplicated(keep='first')]
+
+    else:
+        coords = ';'.join([str(data.loc[row,'long'])+','+str(data.loc[row,'lat']) for row in rows])
+
+        url = f"http://router.project-osrm.org/table/v1/car/{coords}?annotations=distance,duration"
+
+        res = requests.get(url)
+
+        dist = res.json()['distances']
+
+        dur = res.json()['durations']
+
+        dist_df = pd.DataFrame(dist, columns=rows, index = rows).stack()
+        dist_df.index = dist_df.index.set_names(["from", "to"]) 
+        dur_df = pd.DataFrame(dur, columns=rows, index = rows).stack()
+        dur_df.index = dur_df.index.set_names(["from", "to"])
+        df = pd.concat([dist_df, dur_df], axis=1)
+        df = df.rename(columns={0:'distance',1:'duration'})
+
+    return df
+
+
+df = get_distances_from_rows(data, list(data.index))
+print(df)
+
+df.to_csv('kc_distances.csv')

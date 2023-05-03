@@ -1,0 +1,181 @@
+##### XGBoost model #####
+# Including standardized features and scaled house prices
+import math
+import pandas as pd
+import xgboost as xgb
+import numpy as np
+from matplotlib import pyplot as plt
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from xgboost import XGBRegressor
+from sklearn.model_selection import GridSearchCV, train_test_split
+
+'''# read the csv file into a pandas dataframe
+df = pd.read_csv('my_filtered_dataset.csv')
+most_pred = ['Price','sqft_living', 'grade', 'sqft_living15', 'sqft_above', 'dist_to_center']
+df = df[most_pred]
+print('Missing values? ', df.isnull().values.any())
+# There are no missing values
+
+#print(df.dtypes)
+# Dummy variable for waterfront:
+waterfront = pd.get_dummies(df['waterfront'], drop_first = True, prefix='waterfront_')
+# Dummy variable for zipcode:
+zipcode = pd.get_dummies(df['zipcode'], drop_first = True, prefix='zipcode_')
+# Dropping the original 'waterfront'and ‘zipcode’ columns:
+df = df.drop(['zipcode','waterfront'], axis = 1)
+# Adding the dummy columns to the dataset:
+df = pd.concat([df,zipcode,waterfront], axis=1)
+#print(df.head())
+
+# Split data into training and test set:
+# trdata : Training Data Subset (Let's inspect the data as if we only had this data this)
+# tedata : Test Data Subset (Use this subset for model evaluation)
+# 80/20 Split
+from sklearn.model_selection import train_test_split
+trdata,tedata = train_test_split(df,test_size=0.2,random_state=42)'''
+
+# Split data into training and test set:
+trdata = pd.read_csv('trdata_netw1_2_featuresNEW.csv')
+tedata = pd.read_csv('tedata_netw1_2_featuresNEW.csv')
+
+print('Missing values trdata? ', trdata.isnull().values.any())
+print('Missing values tedata? ', tedata.isnull().values.any())
+
+# Dummy variable for waterfront:
+waterfront = pd.get_dummies(tedata['waterfront'], drop_first = True, prefix='waterfront_')
+# Dummy variable for zipcode:
+zipcode = pd.get_dummies(tedata['zipcode'], drop_first = True, prefix='zipcode_')
+# Dropping the original 'waterfront'and ‘zipcode’ columns:
+tedata = tedata.drop(['zipcode','waterfront'], axis = 1)
+# Adding the dummy columns to the dataset:
+tedata = pd.concat([tedata,zipcode,waterfront], axis=1)
+#print(df.head())
+#print(df.dtypes)
+# Dummy variable for waterfront:
+waterfront = pd.get_dummies(trdata['waterfront'], drop_first = True, prefix='waterfront_')
+# Dummy variable for zipcode:
+zipcode = pd.get_dummies(trdata['zipcode'], drop_first = True, prefix='zipcode_')
+# Dropping the original 'waterfront'and ‘zipcode’ columns:
+trdata = trdata.drop(['zipcode','waterfront'], axis = 1)
+# Adding the dummy columns to the dataset:
+trdata = pd.concat([trdata,zipcode,waterfront], axis=1)
+#print(df.head())
+
+
+# Split target variable from independent variables:
+tr_hprice = trdata['Price'].copy() # Target variable
+tr_X = trdata.copy() # Independent variables
+del tr_X['Price'] # Delete the target variable
+
+# Test data:
+te_hprice = tedata['Price'].copy() # Target variable
+te_X = tedata.copy() # Independent variables
+del te_X['Price'] # Delete the target variable
+
+# Standardizing our data:
+# Initialize the StandardScaler object
+scaler = StandardScaler()
+# Fit the scaler on the training data only
+scaler.fit(tr_X)
+# Standardize the data using the scaler
+tr_X_stand = scaler.transform(tr_X)
+te_X_stand = scaler.transform(te_X)
+
+# Scaling the house prices:
+# MinMaxScaler() scales the data such that the range of the data is between 0 and 1.
+# The scaling is performed by subtracting the minimum value in each feature column and then
+# dividing by the range of that feature column (max minus min). The scaling process is performed
+# independently for each feature, meaning that the minimum and maximum values used for scaling
+# are calculated separately for each feature. This ensures that each feature is scaled to the same
+# range and prevents any one feature from dominating the others.
+scaler2 = MinMaxScaler()
+# Reshape tr_hprice to 2D array
+#print(np.array(tr_hprice).reshape(-1, 1))
+#print(np.array(tr_hprice).reshape(1, -1))
+tr_hprice = np.array(tr_hprice).reshape(-1, 1)
+tr_Y_scaled = scaler2.fit_transform(tr_hprice)
+
+# Define the XGBoost model:
+
+# This is a dictionary containing the hyperparameters and their possible values:
+# Is this a good grid? Or should other values also be included? How can you evaluate this??
+param_grid = {
+    'learning_rate': [0.05, 0.1],
+    'n_estimators': [100, 500],
+    'max_depth': [3, 5],
+    'subsample': [0.8, 1.0],
+    'colsample_bytree': [0.8, 1.0],
+}
+
+model = xgb.XGBRegressor()
+
+# Find the best hyperparameters:
+xgb_gridsearch = GridSearchCV(
+    estimator=model,
+    param_grid=param_grid,
+    scoring='neg_mean_squared_error',
+    cv=5,
+    verbose=3,
+    n_jobs=-1
+)
+
+xgb_gridsearch.fit(tr_X_stand,tr_Y_scaled)
+
+# Tuning results
+print("Best hyperparameters: ", xgb_gridsearch.best_params_)
+print("Best score: ", xgb_gridsearch.best_score_)
+
+# Test results (on best model):
+# On the internet, I found that this is the correct way to test the model on new data:
+#xgb_model = xgb.XGBRegressor(**xgb_random.best_params_)
+#xgb_model.fit(tr_X, tr_X)
+#predictiontest = xgb_model.predict(te_X)
+# However, I get the following error when calculating the MAE and MSE:
+# ValueError: y_true and y_pred have different number of output (1!=127)
+# The following does work, but I don't know if that is correct:
+predictiontest = xgb_gridsearch.predict(te_X_stand)
+# Inverse transform predicted target variable to the original scale
+Y_nonscaled_predicted = scaler2.inverse_transform(predictiontest.reshape(-1, 1))
+
+#Evaluation metrics
+print("Mean Absolute Error:", mean_absolute_error(te_hprice,Y_nonscaled_predicted))
+mse = mean_squared_error(te_hprice,Y_nonscaled_predicted)
+print("Mean Squared Error:", mse)
+print("Root Mean Squared Error:", math.sqrt(mse))
+
+#Plot feature importance:
+importances = xgb_gridsearch.best_estimator_.feature_importances_
+features = list(trdata.columns[1:])
+
+# Sort the features and importances in descending order of importance
+sorted_indices = np.argsort(importances)[::-1]
+sorted_features = [features[i] for i in sorted_indices]
+sorted_importances = [importances[i] for i in sorted_indices]
+
+# Plot the sorted feature importances
+plt.figure(figsize=(10,6))
+plt.title("Feature importances XGB")
+plt.bar(range(len(features)), sorted_importances)
+# Remove 'price' from the list of features
+features_no_target = [feat for feat in sorted_features if feat != 'Price']
+plt.xticks(range(len(features_no_target)), features_no_target, rotation=90,fontsize=8)
+plt.tight_layout() # improve spacing between axis labels and plot
+plt.show()
+
+'''
+# Make predictions on new data
+input_data = {
+    'longitude': -122.23,
+    'latitude': 37.88,
+    'housing_median_age': 41,
+    'total_rooms': 880,
+    'total_bedrooms': 129,
+    'population': 322,
+    'households': 126,
+    'median_income': 8.3252
+}
+input_df = pd.DataFrame(input_data, index=[0])
+dtest = xgb.DMatrix(input_df)
+prediction = model.predict(dtest)
+print(f"Predicted median house value: ${prediction[0]:,.2f}")'''

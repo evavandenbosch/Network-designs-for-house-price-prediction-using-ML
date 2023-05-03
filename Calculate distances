@@ -1,0 +1,28 @@
+import pandas as pd
+import numpy as np
+from geopy.distance import great_circle
+import networkx as nx
+
+# read the csv file into a pandas dataframe
+df = pd.read_csv('Kansas_housing.csv')
+del df['ID'] # ID is not an explanatory variable, so we drop that.
+del df['date']
+#print('Missing values? ', df.isnull().values.any())
+# There are no missing values
+
+# create an empty graph using networkx
+G = nx.Graph()
+
+# add nodes to the graph for each house with their longitude and latitude as attributes
+for i, row in df.iterrows():
+    G.add_node(i, long=row['long'], lat=row['lat'])
+
+# calculate the distance between each pair of houses
+distances = np.zeros((len(df), len(df)))
+for i, node1 in G.nodes(data=True):
+    print('i: ',i)
+    for j, node2 in G.nodes(data=True):
+        distances[i, j] = great_circle((node1['lat'], node1['long']), (node2['lat'], node2['long'])).km
+
+# Save the distance matrix to disk
+np.save('distances.npy', distances)

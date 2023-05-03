@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+import networkx as nx
+from sklearn.preprocessing import StandardScaler
+from torch_geometric.utils import from_networkx
+
+df = pd.read_csv('my_filtered_dataset.csv')
+del df['ID'] # ID is not an explanatory variable, so we drop that.
+del df['date']
+del df['index']
+print('Missing values? ', df.isnull().values.any())
+# There are no missing values
+
+#print(df.dtypes)
+# Dummy variable for waterfront:
+#waterfront = pd.get_dummies(df['waterfront'], drop_first = True, prefix='waterfront_')
+# Dummy variable for zipcode:
+#zipcode = pd.get_dummies(df['zipcode'], drop_first = True, prefix='zipcode_')
+# Dropping the original ‘waterfront' and ‘zipcode’ columns:
+df = df.drop(['zipcode','waterfront'], axis = 1)
+# Adding the dummy columns to the dataset:
+#df = pd.concat([df,zipcode,waterfront], axis=1)
+#print(df.head())
+
+feature_cols = list(df.columns[1:])
+target = ['Price']
+# create an empty graph using networkx
+G = nx.Graph()
+
+for i in df.iterrows():
+    node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
+    id_node = i[0]
+    x_node = i[1][feature_cols].values
+    y_node = i[1][target].values
+    # print(y_node)
+    G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features
+
+pyg_graph = from_networkx(G)
+#print(pyg_graph.x)
+scaler = StandardScaler()
+X_norm = scaler.fit_transform(pyg_graph.x.float())
+#print(X_norm[1])
+
+# calculate the cosine feature-based similarity between each pair of houses
+similarity_matrix = np.zeros((len(df), len(df)))
+for i, node1 in G.nodes(data=True):
+    print('i: ',i)
+    #array1 = np.array(list(node1.values()))
+    #array1 = array1.reshape(1,-1)
+    #print("array 1: ", array1)
+    for j, node2 in G.nodes(data=True):
+        #array2 = np.array(list(node2.values()))
+        #array2 = array2.reshape(1,-1)
+        #print("(array1,array2)[0][0]: ", (array1,array2)[0][0])
+        if i<= j:
+            arrayi = X_norm[i].reshape(1,-1)
+            arrayj = X_norm[j].reshape(1, -1)
+            similarity_matrix[i, j] = cosine_similarity(arrayi,arrayj)
+            #print(similarity_matrix[i, j])
+
+# Save the distance matrix to disk
+np.save('my_filtered_similarities.npy', similarity_matrix)

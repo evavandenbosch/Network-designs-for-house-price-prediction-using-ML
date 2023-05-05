@@ -99,7 +99,6 @@ tr_Y_scaled = scaler2.fit_transform(tr_hprice)
 # Define the XGBoost model:
 
 # This is a dictionary containing the hyperparameters and their possible values:
-# Is this a good grid? Or should other values also be included? How can you evaluate this??
 param_grid = {
     'learning_rate': [0.05, 0.1],
     'n_estimators': [100, 500],
@@ -127,13 +126,6 @@ print("Best hyperparameters: ", xgb_gridsearch.best_params_)
 print("Best score: ", xgb_gridsearch.best_score_)
 
 # Test results (on best model):
-# On the internet, I found that this is the correct way to test the model on new data:
-#xgb_model = xgb.XGBRegressor(**xgb_random.best_params_)
-#xgb_model.fit(tr_X, tr_X)
-#predictiontest = xgb_model.predict(te_X)
-# However, I get the following error when calculating the MAE and MSE:
-# ValueError: y_true and y_pred have different number of output (1!=127)
-# The following does work, but I don't know if that is correct:
 predictiontest = xgb_gridsearch.predict(te_X_stand)
 # Inverse transform predicted target variable to the original scale
 Y_nonscaled_predicted = scaler2.inverse_transform(predictiontest.reshape(-1, 1))
@@ -162,20 +154,3 @@ features_no_target = [feat for feat in sorted_features if feat != 'Price']
 plt.xticks(range(len(features_no_target)), features_no_target, rotation=90,fontsize=8)
 plt.tight_layout() # improve spacing between axis labels and plot
 plt.show()
-
-'''
-# Make predictions on new data
-input_data = {
-    'longitude': -122.23,
-    'latitude': 37.88,
-    'housing_median_age': 41,
-    'total_rooms': 880,
-    'total_bedrooms': 129,
-    'population': 322,
-    'households': 126,
-    'median_income': 8.3252
-}
-input_df = pd.DataFrame(input_data, index=[0])
-dtest = xgb.DMatrix(input_df)
-prediction = model.predict(dtest)
-print(f"Predicted median house value: ${prediction[0]:,.2f}")'''

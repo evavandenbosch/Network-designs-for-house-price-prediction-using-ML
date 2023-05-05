@@ -107,7 +107,6 @@ tr_Y_scaled = tr_Y_scaled.ravel()
 rf = RandomForestRegressor()
 
 # This is a dictionary containing the hyperparameters and their possible values:
-# Is this a good grid? Or should other values also be included? How can you evaluate this??
 param_grid = {
     'n_estimators': [100, 500],
     'max_depth': [10, 20, None],

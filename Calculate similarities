@@ -12,16 +12,8 @@ del df['index']
 print('Missing values? ', df.isnull().values.any())
 # There are no missing values
 
-#print(df.dtypes)
-# Dummy variable for waterfront:
-#waterfront = pd.get_dummies(df['waterfront'], drop_first = True, prefix='waterfront_')
-# Dummy variable for zipcode:
-#zipcode = pd.get_dummies(df['zipcode'], drop_first = True, prefix='zipcode_')
 # Dropping the original ‘waterfront' and ‘zipcode’ columns:
 df = df.drop(['zipcode','waterfront'], axis = 1)
-# Adding the dummy columns to the dataset:
-#df = pd.concat([df,zipcode,waterfront], axis=1)
-#print(df.head())
 
 feature_cols = list(df.columns[1:])
 target = ['Price']

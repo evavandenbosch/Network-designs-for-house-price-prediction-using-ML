@@ -28,8 +28,7 @@ print('Missing values? ', df.isnull().values.any())
 df, tedata = train_test_split(df, test_size=0.2, random_state=42)
 print("Length of training dataset: ", len(df))
 
-# Definieer de kolommen die we als features beschouwen en de target
-# De target staat vanvoor, alle andere kolommen gebruiken we als features
+# Define the columns we use as features and the target
 feature_cols = list(df.columns[1:])
 print('Dit zijn onze features: ' + str(feature_cols))
 target = ['Price']
@@ -44,11 +43,11 @@ def build_graph_distance(features, dist_threshold):
     # add nodes to the graph
     for i in features.iterrows():
         node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
-        # id: we nemen gewoon de index in de dataframe
+        # id: we take the index in the dataframe
         id_node = i[0]
-        # features: we selecteren uit de rij in de dataframe enkel de kolommen die we als features beschouwen
+        # features: we select from the row in the dataframe only the columns we consider as features
         x_node = i[1][feature_cols].values
-        # target: we selecteren opnieuw uit de huidige rij enkel de target, nl de prijs
+        # target: we select again from the current row only the target, i.e. the price
         y_node = i[1][target].values
         # print(y_node)
         G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features
@@ -63,7 +62,7 @@ def build_graph_distance(features, dist_threshold):
         for j, node2 in G.nodes(data=True):
             if i < j:
                 dist = dist_matrix[i,j]
-                if dist >= dist_threshold: #Enkel edge indien de huizen minstens bepaalde similarity hebben
+                if dist >= dist_threshold:
                     G.add_edge(i, j) # No weight on edges
     return G
 
@@ -142,12 +141,10 @@ print('Missing values? ', df.isnull().values.any())
 # There are no missing values
 
 # Split into training and test set
-# training data = df, because we only want to use training data to build features!
 trdata, df = train_test_split(df, test_size=0.2, random_state=42)
 print("Length of training dataset: ", len(df))
 
-# Definieer de kolommen die we als features beschouwen en de target
-# De target staat vanvoor, alle andere kolommen gebruiken we als features
+# Define the columns we consider as features and the target
 feature_cols = list(df.columns[1:])
 print('Dit zijn onze features: ' + str(feature_cols))
 target = ['Price']
@@ -162,11 +159,11 @@ def build_graph_distance(features, dist_threshold):
     # add nodes to the graph
     for i in features.iterrows():
         node_features = pd.Series.to_dict(i[1])  # convert the row to a dictionary of features
-        # id: we nemen gewoon de index in de dataframe
+        # id: we take the index in the dataframe
         id_node = i[0]
-        # features: we selecteren uit de rij in de dataframe enkel de kolommen die we als features beschouwen
+        # features: we select from the row in the dataframe only the columns we consider as features
         x_node = i[1][feature_cols].values
-        # target: we selecteren opnieuw uit de huidige rij enkel de target, nl de prijs
+        # target: we select again from the current row only the target, i.e. the price
         y_node = i[1][target].values
         # print(y_node)
         G.add_node(id_node, x=x_node, y=y_node)  # add the node to the graph with its features

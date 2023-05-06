@@ -1,0 +1,29 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Network designs for house price prediction using ML
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Eva
+    family-names: Van den Bosch
+    email: eva.vandenbosch@student.kuleuven.be
+  - given-names: Kaat
+    family-names: Tans
+    email: kaat.tans@student.kuleuven.be
+repository-code: >-
+  https://github.com/evavandenbosch/Network-designs-for-house-price-prediction-using-ML
+abstract: >-
+  Code used for master thesis "On the comparison of network
+  design alternatives for house price prediction using
+  machine learning". 
+keywords:
+  - Graph Neural Networks
+  - House Price Prediction
+  - GraphSage
+  - Graph Structure
+  - Network Features
+date-released: '2023-05-05'
